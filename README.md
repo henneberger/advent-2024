@@ -8,6 +8,3 @@ Download flink, start the cluster. Either submit the job through the sql-client 
 OR
 
 Run it line-by-line in the sql-client.
-
-## GPT notes
-I will sometimes play around with gpt solutions AFTER I solved them by hand. This is mostly for refactoring to discover more concise solutions.
