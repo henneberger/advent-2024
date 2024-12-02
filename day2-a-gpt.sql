@@ -38,7 +38,7 @@ FROM (
           t.x,
           *
         FROM input_table i
-        CROSS JOIN UNNEST(SPLIT(i.item, ' ')) AS t(x) --Note WITH ORDINALITY seems broken in flink
+        CROSS JOIN UNNEST(ARRAY_APPEND(SPLIT(i.item, ' ')), null) AS t(x) --Note WITH ORDINALITY seems broken in flink
       )
     )
   )
