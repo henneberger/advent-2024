@@ -22,16 +22,12 @@ select ts, regex_split('mul\((\d{1,3}),(\d{1,3})\)|don''t\(\)|do\(\)', input) AS
 
 CREATE TEMPORARY VIEW b AS
 select ts, row_number() OVER (order by ts) as rn, u[1] as op,
-  CASE WHEN starts_with('mul', u[1]) THEN 1
-  WHEN starts_with('don', u[1]) THEN 2
-  ELSE 3
-  END AS op_type,
 CAST(u[2] AS bigint) as x, CAST(u[3] AS bigint) as y from a cross join UNNEST(a.split) u;
 
 CREATE TEMPORARY VIEW c AS
 SELECT
-  max(case when op_type = 3 then rn end) OVER (order by ts) as do_rn,
-  max(case when op_type = 2 then rn end) OVER (order by ts) as dont_rn,
+  max(case when op like 'do%' and op not like 'don%' then rn end) OVER (order by ts) as do_rn,
+  max(case when op like 'don%' then rn end) OVER (order by ts) as dont_rn,
   *
  from b;
 
