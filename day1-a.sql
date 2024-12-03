@@ -8,7 +8,7 @@ CREATE TABLE input_table (
   ts AS PROCTIME()
 ) WITH (
   'connector' = 'filesystem',
-  'path' = '/Users/henneberger/advent-of-code/day1-input.txt',
+  'path' = '/Users/henneberger/advent-of-code/data/day1-input.txt',
   'format' = 'csv',
   'csv.field-delimiter' = ' ',
   'csv.ignore-parse-errors' = 'true'

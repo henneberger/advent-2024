@@ -8,3 +8,6 @@ Download flink, start the cluster. Either submit the job through the sql-client 
 OR
 
 Run it line-by-line in the sql-client.
+
+## Notes
+Flink lacks some basic functions we'll have to make them but we'll keep it basic.
