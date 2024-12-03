@@ -1,3 +1,5 @@
+-- Keep everything as windows except final count, add state ttl
+
 CREATE TABLE input_table (
   item String,
   ts AS PROCTIME()
@@ -10,29 +12,31 @@ CREATE TABLE input_table (
 );
 
 -- Unnest array
-CREATE TEMPORARY VIEW unnested_table AS
-SELECT * FROM input_table i
-CROSS JOIN unnest(ARRAY_APPEND(SPLIT(i.item, ' '), null)) x;
+CREATE TEMPORARY VIEW a AS
+SELECT /*+ STATE_TTL('i'='1s', x='1s') */
+ cast(x as bigint) - lag(cast(x as bigint)) over (partition by item order by ts) as y,
+ item, ts FROM input_table i
+CROSS JOIN unnest(SPLIT(i.item, ' ')) x;
 
-CREATE TEMPORARY VIEW lag_table AS
-select *, lag(CAST(x AS NUMERIC), 1) OVER (order by ts asc) as lag_x from unnested_table;
+-- Keep it as a stream
+CREATE TEMPORARY VIEW b AS
+select /*+ STATE_TTL('a'='1s') */
+ max(y > 3 or y = 0 or y < -3) OVER (partition by item order by ts) as unsafe,
+ case
+   when sum(case when y > 0 then 1 else 0 end) OVER (partition by item order by ts) = count(y) OVER (partition by item order by ts) THEN false
+   when sum(case when y < 0 then 1 else 0 end) OVER (partition by item order by ts) = count(y) OVER (partition by item order by ts) THEN false
+   ELSE true
+ end as not_strictly_asc_desc,
+  *
+from a;
 
-CREATE TEMPORARY VIEW lag_table_2 AS
-select *,CAST(x as NUMERIC) AS x_num, CAST(x as NUMERIC) - CAST(lag_x AS NUMERIC) AS diff_x from lag_table;
-
-CREATE TEMPORARY VIEW safe_nums AS
-select *, CASE WHEN diff_x IS NULL THEN NULL WHEN diff_x = 1 THEN 1 WHEN diff_x = 2 THEN 1 WHEN diff_x = 3 THEN 1
- WHEN diff_x = -1 THEN -1 WHEN diff_x = -2 THEN -1 WHEN diff_x = -3 THEN -1 ELSE -9999 END
- AS s FROM lag_table_2;
-
-CREATE TEMPORARY VIEW safe_nums_2 AS
-SELECT *, SUM(s) OVER (PARTITION BY item ORDER BY ts) AS sum_val FROM safe_nums;
-
-CREATE TEMPORARY VIEW safe_nums_3 AS
-SELECT *,  CARDINALITY(SPLIT(item, ' ')) FROM safe_nums_2 WHERE x_num IS NULL AND CARDINALITY(SPLIT(item, ' ')) = ABS(sum_val) - 1;
-
-CREATE TEMPORARY VIEW safe_nums_4 AS
-SELECT COUNT(*) as total FROM safe_nums_2 WHERE x_num IS NULL AND CARDINALITY(SPLIT(item, ' ')) = ABS(sum_val) + 1;
+CREATE TEMPORARY VIEW c AS
+select count(*) as total from (
+  select item, max(unsafe) as m
+  from b
+  group by item
+  having not max(unsafe) and not max(not_strictly_asc_desc)
+);
 
 CREATE TABLE print_sink (
   total BIGINT
@@ -42,4 +46,4 @@ CREATE TABLE print_sink (
 
 INSERT INTO print_sink
 SELECT total
-FROM safe_nums_4;
+FROM c;
