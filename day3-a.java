@@ -5,8 +5,6 @@ select REGEXP_EXTRACT_ALL(x, 'mul\((\d{1,3}),(\d{1,3})\)')
 from (VALUES('xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))')) as t(x);
 ...*/
 
-Here it is in java
-
 package io.henneberger;
 
 import java.io.BufferedReader;
@@ -15,7 +13,7 @@ import java.io.InputStreamReader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class SafeReportsPartTwo {
+public class Day3Part1 {
 
   static Pattern p = Pattern.compile("mul\\((\\d{1,3}),(\\d{1,3})\\)");
 

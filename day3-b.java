@@ -6,26 +6,28 @@ import java.io.InputStreamReader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class SafeReportsPartTwo {
+public class Day3Part2 {
 
   static Pattern p = Pattern.compile("mul\\((\\d{1,3}),(\\d{1,3})\\)|don't\\(\\)|do\\(\\)");
 
   public static void main(String[] args) throws IOException {
     BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-    int safeCount = 0;
+    long safeCount = 0;
     String line;
     while ((line = reader.readLine()) != null && !line.isEmpty()) {
       String t = line.trim();
-      safeCount += parse(t);
+      for (String x : t.split("\n")) {
+        safeCount += parse(t);
+      }
     }
 
     System.out.println(safeCount);
   }
+  static boolean donotSkip = true;
 
-  private static int parse(String t) {
+  private static long parse(String t) {
     Matcher matcher = p.matcher(t);
     int sum = 0;
-    boolean donotSkip=true;
     while (matcher.find()) {
       String group = matcher.group();
       switch (group.substring(0, Math.min(group.length(), 3))) {
@@ -34,6 +36,7 @@ public class SafeReportsPartTwo {
             int x = Integer.parseInt(matcher.group(1));
             int y = Integer.parseInt(matcher.group(2));
             sum += (x * y);
+          } else {
           }
           break;
 
@@ -44,6 +47,8 @@ public class SafeReportsPartTwo {
           donotSkip = true;
           break;
       }
+
+
     }
     return sum;
   }
