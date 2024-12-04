@@ -22,11 +22,8 @@ CROSS JOIN unnest(SPLIT(i.item, ' ')) x;
 CREATE TEMPORARY VIEW b AS
 select /*+ STATE_TTL('a'='1s') */
  max(y > 3 or y = 0 or y < -3) OVER (partition by item order by ts) as unsafe,
- case
-   when sum(case when y > 0 then 1 else 0 end) OVER (partition by item order by ts) = count(y) OVER (partition by item order by ts) THEN false
-   when sum(case when y < 0 then 1 else 0 end) OVER (partition by item order by ts) = count(y) OVER (partition by item order by ts) THEN false
-   ELSE true
- end as not_strictly_asc_desc,
+ case when y > 0 then 1 else 0 end strict_asc,
+ case when y < 0 then 1 else 0 end strict_desc,
   *
 from a;
 
@@ -35,7 +32,7 @@ select count(*) as total from (
   select item, max(unsafe) as m
   from b
   group by item
-  having not max(unsafe) and not max(not_strictly_asc_desc)
+  having not max(unsafe) and (sum(strict_asc) = count(*) - 1 or sum(strict_desc) = count(*) - 1)
 );
 
 CREATE TABLE print_sink (
