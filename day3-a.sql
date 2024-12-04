@@ -1,34 +1,29 @@
-ADD JAR '/Users/henneberger/advent-of-code/target/aoc-flink-lib-1.0-SNAPSHOT.jar';
+add jar '/users/henneberger/advent-of-code/target/aoc-flink-lib-1.0-snapshot.jar';
 
-CREATE TEMPORARY FUNCTION IF NOT EXISTS regex_split
-  AS 'io.github.henneberger.RegexSplit' LANGUAGE JAVA;
+create temporary function if not exists regex_split
+    as 'io.github.henneberger.RegexSplit' language java;
 
-CREATE TABLE input_table (
-  input String,
-  ts AS PROCTIME()
-) WITH (
+create table input_table (
+  input string,
+  ts as proctime()
+) with (
   'connector' = 'filesystem',
-  'path' = '/Users/henneberger/advent-of-code/data/day3-example.txt',
+  'path' = '/users/henneberger/advent-of-code/data/day3-input.txt',
   'format' = 'csv',
   'csv.field-delimiter' = '|',
   'csv.ignore-parse-errors' = 'true'
 );
 
-CREATE TEMPORARY VIEW a AS
-select regex_split('mul\((\d{1,3}),(\d{1,3})\)', input) AS split from input_table;
+create temporary view a as
+select sum(cast(u[2] as bigint) * cast(u[3] as bigint)) as total
+from input_table, unnest(regex_split('mul\((\d{1,3}),(\d{1,3})\)', input)) as u;
 
-CREATE TEMPORARY VIEW b AS
-select u[1] as op, CAST(u[2] AS bigint) as x, CAST(u[3] AS bigint) as y from a CROSS JOIN UNNEST(a.split) u;
-
-CREATE TEMPORARY VIEW c AS
-select SUM(x*y) AS total FROM b;
-
-CREATE TABLE print_sink (
-  total BIGINT
-) WITH (
+create table print_sink (
+  total bigint
+) with (
   'connector' = 'print'
 );
 
-INSERT INTO print_sink
-SELECT total
-FROM c;
+insert into print_sink
+select total
+from a;
