@@ -11,25 +11,29 @@ create table input_table (
 
 -- convert each letter to row, add a space to simplify later ops
 create temporary view a as
-select x, char_length(input) + 1 as len, ts from input_table, unnest(split(input || ' ', '')) as x;
+select x, char_length(input) + 1 as len, ts
+from input_table, unnest(split(input || ' ', '')) as x;
 
 -- instead of day4-a, we treat the last 'S' or 'M' as the bottom right corner
 create temporary view b as
 select
+  -- negative diagonal
   x,
-  lag(x, len + 1) over (order by ts) as n1,
-  lag(x, 2 * len + 2) over (order by ts) as n2,
-  lag(x, 2) over (order by ts) as p1,
-  lag(x, len + 1) over (order by ts) as p2,
-  lag(x, 2 * len) over (order by ts) as p3
+  lag(x, 1 * len + 1) over (order by ts) as c,
+  lag(x, 2 * len + 2) over (order by ts) as n,
+  -- positive diagonal
+  lag(x, 2      ) over (order by ts) as p,
+  lag(x, 2 * len) over (order by ts) as t,
+  -- pattern
+  array['M', 'A', 'S'] as mas,
+  array['S', 'A', 'M'] as sam
 from a;
 
 create temporary view c as
-select sum(case when(
-    ((x  = 'M' and n1 = 'A' and n2 = 'S') or (x  = 'S' and n1 = 'A' and n2 = 'M')) and
-    ((p1 = 'M' and p2 = 'A' and p3 = 'S') or (p1 = 'S' and p2 = 'A' and p3 = 'M'))
-  ) then 1 else 0 end) as total
-from b;
+select count(*) as total
+from b
+where array[x, c, n] in (mas, sam) and
+      array[p, c, t] in (mas, sam);
 
 create table print_sink (
   total bigint
