@@ -34,20 +34,24 @@ select
   lag(x, 1 * len + 1) over (order by ts) as d2_1,
   lag(x, 2 * len + 2) over (order by ts) as d2_2,
   lag(x, 3 * len + 3) over (order by ts) as d2_3,
+  -- pattern to match
+  array['X', 'M', 'A', 'S'] as xmas,
+  array['S', 'A', 'M', 'X'] as samx,
   *
 from a;
 
 create temporary view c as
 select
- sum(case when array[x, h1  , h2  , h3  ] in (xmas, samx) then 1 else 0 end) +
- sum(case when array[x, v1  , v2  , v3  ] in (xmas, samx) then 1 else 0 end) +
- sum(case when array[x, d1_1, d1_2, d1_3] in (xmas, samx) then 1 else 0 end) +
- sum(case when array[x, d2_1, d2_2, d2_3] in (xmas, samx) then 1 else 0 end) as total
-from (
- select
-   array['X', 'M', 'A', 'S'] as xmas,
-   array['S', 'A', 'M', 'X'] as samx, *
- from b);
+ case when array[x, h1  , h2  , h3  ] in (xmas, samx) then 1 else 0 end +
+ case when array[x, v1  , v2  , v3  ] in (xmas, samx) then 1 else 0 end +
+ case when array[x, d1_1, d1_2, d1_3] in (xmas, samx) then 1 else 0 end +
+ case when array[x, d2_1, d2_2, d2_3] in (xmas, samx) then 1 else 0 end as total
+from b;
+
+create temporary view d as
+select
+ sum(total) as total
+from c;
 
 create table print_sink (
   total bigint
@@ -57,4 +61,4 @@ create table print_sink (
 
 insert into print_sink
 select total
-from c;
+from d;
