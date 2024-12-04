@@ -11,31 +11,43 @@ create table input_table (
 
 -- convert each letter to row, add a space to simplify later ops
 create temporary view a as
-select row_number() over (order by ts) as rn,
- x, char_length(input) + 1 as len, ts from input_table, unnest(split(input || ' ', '')) as x;
+select x, char_length(input) + 1 as len, ts
+from input_table, unnest(split(input || ' ', '')) as x;
 
 -- using only lag functions, look back the various directions
 -- on the m and s, look back
 create temporary view b as
 select
-x || lag(x, 1) over (order by ts) || lag(x, 2) over (order by ts) || lag(x, 3) over (order by ts) as h,
-x || lag(x, len) over (order by ts) || lag(x, len+len) over (order by ts) || lag(x, len+len+len) over (order by ts) as v,
-x || lag(x, len-1) over (order by ts) || lag(x, len+len-2) over (order by ts) || lag(x, len+len+len-3) over (order by ts) as d1,
-x || lag(x, len+1) over (order by ts) || lag(x, len+len+2) over (order by ts) || lag(x, len+len+len+3) over (order by ts) as d2,
-*
+  -- h
+  lag(x, 1) over (order by ts) as h1,
+  lag(x, 2) over (order by ts) as h2,
+  lag(x, 3) over (order by ts) as h3,
+  -- v
+  lag(x, 1 * len) over (order by ts) as v1,
+  lag(x, 2 * len) over (order by ts) as v2,
+  lag(x, 3 * len) over (order by ts) as v3,
+  -- positive diagonal
+  lag(x, 1 * len - 1) over (order by ts) as d1_1,
+  lag(x, 2 * len - 2) over (order by ts) as d1_2,
+  lag(x, 3 * len - 3) over (order by ts) as d1_3,
+  -- negative diagonal
+  lag(x, 1 * len + 1) over (order by ts) as d2_1,
+  lag(x, 2 * len + 2) over (order by ts) as d2_2,
+  lag(x, 3 * len + 3) over (order by ts) as d2_3,
+  *
 from a;
 
 create temporary view c as
 select
- case when h = 'XMAS' or h = 'SAMX' then 1 else 0 end as a,
- case when v = 'XMAS' or v = 'SAMX' then 1 else 0 end as b,
- case when d1 = 'XMAS' or d1 = 'SAMX' then 1 else 0 end as c,
- case when d2 = 'XMAS' or d2 = 'SAMX' then 1 else 0 end as d,
- *
-from b;
-
-create temporary view d as
-select sum(a) + sum(b) + sum(c) + sum(d) as total from c;
+ sum(case when array[x, h1  , h2  , h3  ] in (xmas, samx) then 1 else 0 end) +
+ sum(case when array[x, v1  , v2  , v3  ] in (xmas, samx) then 1 else 0 end) +
+ sum(case when array[x, d1_1, d1_2, d1_3] in (xmas, samx) then 1 else 0 end) +
+ sum(case when array[x, d2_1, d2_2, d2_3] in (xmas, samx) then 1 else 0 end) as total
+from (
+ select
+   array['X', 'M', 'A', 'S'] as xmas,
+   array['S', 'A', 'M', 'X'] as samx, *
+ from b);
 
 create table print_sink (
   total bigint
@@ -45,4 +57,4 @@ create table print_sink (
 
 insert into print_sink
 select total
-from d;
+from c;
