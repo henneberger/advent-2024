@@ -1,5 +1,4 @@
 -- Topo sort in sql (no recursive cte in flink)
--- This solution is very inefficient
 
 create table rules (
     l int,
@@ -49,30 +48,16 @@ select distinct r as page from rules;
 create temporary view c as
 select line, u[1] as dependency, u[2] as page from b, unnest(b.arr) as u;
 
-create temporary view c_2 as
-select
-    line,
-    d1.dependency,
-    r.r as page
-from c d1
-join rules r on d1.page = r.l;
-
--- dependencies of depth 2 (enough to get a solution)
-create temporary view all_dependencies as
-select line, dependency, page from c
-union
-select line, dependency, page from c_2;
-
 -- number the dependencies
 create temporary view d as
 select
-    x.line,
-    x.page as page,
+    c.line,
+    c.page as page,
     count(distinct c.dependency) + 1 as sort_key
-from (select line, p.page from unique_pages p, all_dependencies c where array_contains(c.line, p.page)) as x
-left join all_dependencies c on c.line = x.line and x.page = c.page
-group by x.line, x.page
-having array_contains(x.line, x.page);
+from c
+right join unique_pages p on p.page = c.page
+group by c.line, c.page
+having array_contains(c.line, c.page);
 
 -- resort the list by the sort_key
 create temporary view e as
@@ -84,7 +69,7 @@ where rownum <= 1000;
 
 -- find max so we can find the midpoint
 create temporary view f as
-select line, max(rownum) as m
+select line, max(sort_key) as m
 from e
 group by line;
 
