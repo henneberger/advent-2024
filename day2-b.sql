@@ -1,6 +1,8 @@
 -- We have to maintain a uuid to keep partitions unique, also flink has no simple way to remove items
 -- from arrays consistently.
 
+-- Note: This whole thing would be a whole lot easier if flink fully supported lateral joins
+
 create table input_table (
   parent_item STRING,
   ts AS proctime(),
