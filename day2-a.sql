@@ -1,46 +1,42 @@
--- Keep everything as windows except final count, add state ttl
-
-CREATE TABLE input_table (
-  item String,
-  ts AS PROCTIME()
-) WITH (
+create table input_table (
+  item string,
+  ts as proctime()
+) with (
   'connector' = 'filesystem',
-  'path' = '/Users/henneberger/advent-of-code/data/day2-input.txt',
+  'path' = '/users/henneberger/advent-of-code/data/day2-input.txt',
   'format' = 'csv',
   'csv.field-delimiter' = ',',
   'csv.ignore-parse-errors' = 'true'
 );
 
--- Unnest array
-CREATE TEMPORARY VIEW a AS
-SELECT /*+ STATE_TTL('i'='1s', x='1s') */
- cast(x as bigint) - lag(cast(x as bigint)) over (partition by item order by ts) as y,
- item, ts FROM input_table i
-CROSS JOIN unnest(SPLIT(i.item, ' ')) x;
+-- unnest array, calc diff
+create temporary view a as
+select
+  cast(split(i.item, ' ') as array<bigint>) as item,
+  x - lag(x) over (partition by item order by ts) as diff,
+  ts
+from input_table i
+cross join unnest(cast(split(i.item, ' ') as array<bigint>)) as x;
 
--- Keep it as a stream
-CREATE TEMPORARY VIEW b AS
-select /*+ STATE_TTL('a'='1s') */
- max(y > 3 or y = 0 or y < -3) OVER (partition by item order by ts) as unsafe,
- case when y > 0 then 1 else 0 end strict_asc,
- case when y < 0 then 1 else 0 end strict_desc,
+create temporary view b as
+select
+  case when
+   sum(case when diff >= -3 and diff < 0  then 1 else 0 end) over (partition by item order by ts) = cardinality(item) - 1 or
+   sum(case when diff > 0   and diff <= 3 then 1 else 0 end) over (partition by item order by ts) = cardinality(item) - 1
+  then 1 else 0 end as is_safe,
   *
 from a;
 
-CREATE TEMPORARY VIEW c AS
-select count(*) as total from (
-  select item, max(unsafe) as m
-  from b
-  group by item
-  having not max(unsafe) and (sum(strict_asc) = count(*) - 1 or sum(strict_desc) = count(*) - 1)
-);
+create temporary view c as
+select sum(is_safe) as total
+from b;
 
-CREATE TABLE print_sink (
-  total BIGINT
-) WITH (
+create table print_sink (
+  total bigint
+) with (
   'connector' = 'print'
 );
 
-INSERT INTO print_sink
-SELECT total
-FROM c;
+insert into print_sink
+select total
+from c;
