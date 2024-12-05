@@ -31,15 +31,21 @@ create table updates (
 
 -- Rule violations
 create temporary view a as
-select line, array_agg(array[r.l, r.r]) as arr, max(u_ts) as ts
+select line, max(u_ts) as ts
 from rules as r
 left join updates as u on array_position(line, l) > array_position(line, r)
  and array_position(line, l) <> 0 and array_position(line, r) <> 0
 group by line;
 
 create temporary view b as
-select sum(line[cardinality(line)/2+1]) as total
-from a;
+select line, topo_sort(array_agg(array[r.l, r.r])) as arr
+from a, rules r
+where array_position(line, l) <> 0 and array_position(line, r) <> 0
+group by line;
+
+create temporary view c as
+select sum(arr[cardinality(arr)/2+1]) as total
+from b;
 
 create table print_sink (
   total bigint
@@ -49,4 +55,4 @@ create table print_sink (
 
 insert into print_sink
 select total
-from b;
+from c;

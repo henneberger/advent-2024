@@ -17,11 +17,6 @@
             </goals>
             <configuration>
               <createDependencyReducedPom>true</createDependencyReducedPom>
-              <transformers>
-                <transformer>
-                  <mainClass>io.github.henneberger.MainClass</mainClass>
-                </transformer>
-              </transformers>
             </configuration>
           </execution>
         </executions>

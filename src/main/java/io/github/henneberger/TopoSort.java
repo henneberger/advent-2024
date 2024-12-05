@@ -15,7 +15,8 @@ public class TopoSort extends ScalarFunction {
     for (List<Integer> edge : pairs) {
       graphBuilder.putEdge(edge.get(0), edge.get(1));
     }
-    return topologicalSort(graphBuilder.build());
+    List<Integer> integers = topologicalSort(graphBuilder.build());
+    return integers;
   }
 
   public static List<Integer> topologicalSort(ImmutableGraph<Integer> g) {
@@ -29,6 +30,7 @@ public class TopoSort extends ScalarFunction {
       }
     }
 
+    System.out.println(d);
     return d.entrySet().stream()
         .sorted(Map.Entry.comparingByValue())
         .map(Map.Entry::getKey)
