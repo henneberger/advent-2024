@@ -22,18 +22,25 @@ create table updates (
    'format' = 'csv',
    'csv.field-delimiter' = '|',
    'csv.ignore-parse-errors' = 'true'
- );
+);
 
--- Rule violations
+-- return 0 if there is a return violation, else midpoint
 create temporary view a as
-select distinct line from rules
-join updates on array_position(line, l) > array_position(line, r)
- and array_position(line, l) <> 0 and array_position(line, r) <> 0;
+select
+ line,
+ coalesce(
+  last_value(
+      case when array_position(line, l) > array_position(line, r) then 0
+      else null
+      end
+    ), line[cardinality(line)/2+1]) as val
+from rules
+inner join updates on array_position(line, l) <> 0 and array_position(line, r) <> 0
+group by line;
 
 create temporary view b as
-select sum(line[cardinality(line)/2+1]) as total
-from updates
-where line not in (select line from a);
+select sum(val) as total
+from a;
 
 create table print_sink (
   total bigint
