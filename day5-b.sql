@@ -1,9 +1,5 @@
-add jar '/users/henneberger/advent-of-code/target/aoc-flink-lib-1.0-SNAPSHOT.jar';
+-- All edges are fully identified so we don't need a topo sort
 
-create temporary function if not exists topo_sort
-  as 'io.github.henneberger.TopoSort' language java;
-
--- step 1: create the rules table
 create table rules (
     l int,
     r int,
@@ -16,18 +12,17 @@ create table rules (
   'csv.ignore-parse-errors' = 'true'
 );
 
--- step 3: create the updates table
 create table updates (
-    o String,
-    line AS CAST(split(o, ',') as array<int>),
-    u_ts as proctime()
+  o String,
+  line AS CAST(split(o, ',') as array<int>),
+  u_ts as proctime()
 ) with (
-   'connector' = 'filesystem',
-   'path' = '/Users/henneberger/advent-of-code/data/day5-input-b.txt',
-   'format' = 'csv',
-   'csv.field-delimiter' = '|',
-   'csv.ignore-parse-errors' = 'true'
- );
+  'connector' = 'filesystem',
+  'path' = '/Users/henneberger/advent-of-code/data/day5-input-b.txt',
+  'format' = 'csv',
+  'csv.field-delimiter' = '|',
+  'csv.ignore-parse-errors' = 'true'
+);
 
 -- Rule violations
 create temporary view a as
@@ -37,15 +32,41 @@ left join updates as u on array_position(line, l) > array_position(line, r)
  and array_position(line, l) <> 0 and array_position(line, r) <> 0
 group by line;
 
+-- Get rules for each line
 create temporary view b as
-select line, topo_sort(array_agg(array[r.l, r.r])) as arr
+select line, r.l as dependency, r.r as page
 from a, rules r
-where array_position(line, l) <> 0 and array_position(line, r) <> 0
+where array_position(line, l) <> 0 and array_position(line, r) <> 0;
+
+-- Prepare for topo sort
+create temporary view unique_pages as
+select distinct l as page from rules
+union
+select distinct r as page from rules;
+
+-- Number the dependencies
+create temporary view c as
+select
+    b.line,
+    b.page as page,
+    count(distinct b.dependency) + 1 as sort_key
+from b
+right join unique_pages p on p.page = b.page
+group by b.line, b.page
+having b.line is not null;
+
+-- find max so we can find the midpoint
+create temporary view d as
+select line, max(sort_key) as m
+from c
 group by line;
 
-create temporary view c as
-select sum(arr[cardinality(arr)/2+1]) as total
-from b;
+-- find the midpoint value and sum
+create temporary view e as
+select sum(page) as total
+from c
+join d on c.line = d.line
+where (m+1)/2 = sort_key;
 
 create table print_sink (
   total bigint
@@ -55,4 +76,4 @@ create table print_sink (
 
 insert into print_sink
 select total
-from c;
+from e;
