@@ -2,39 +2,35 @@
 -- We could do an interval join over two streams, but instead we'll create a stateful table on the
 --  right hand side and do a join.
 
-CREATE TABLE input_table (
-  left_id INT,
-  right_id INT,
-  ts AS PROCTIME()
-) WITH (
+create table input_table (
+  left_id int,
+  right_id int,
+  ts as proctime()
+) with (
   'connector' = 'filesystem',
-  'path' = '/Users/henneberger/advent-of-code/data/day1-input.txt',
+  'path' = '/users/henneberger/advent-of-code/data/day1-input.txt',
   'format' = 'csv',
   'csv.field-delimiter' = ' ',
   'csv.ignore-parse-errors' = 'true'
 );
 
--- Create a state table from the right list
-CREATE TEMPORARY VIEW right_count AS
-SELECT right_id, COUNT(*) AS cnt
-FROM input_table
-GROUP BY right_id;
+-- create a state table from the right list
+create temporary view right_count as
+select right_id, count(*) as cnt
+from input_table
+group by right_id;
 
-CREATE TEMPORARY VIEW totals AS
-SELECT l.left_id, COALESCE(r.cnt, 0) AS c
-FROM input_table l
-LEFT JOIN right_count r ON l.left_id = r.right_id;
+create temporary view totals as
+select sum(l.left_id * coalesce(r.cnt, 0)) as total
+from input_table l
+left join right_count r on l.left_id = r.right_id;
 
-CREATE TEMPORARY VIEW total_count AS
-SELECT SUM(left_id * c) AS total
-FROM totals;
-
-CREATE TABLE print_sink (
-  total BIGINT
-) WITH (
+create table print_sink (
+  total bigint
+) with (
   'connector' = 'print'
 );
 
-INSERT INTO print_sink
-SELECT total
-FROM total_count;
+insert into print_sink
+select total
+from totals;
