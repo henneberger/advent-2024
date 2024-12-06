@@ -1,7 +1,3 @@
--- The second half is simpler since we can compute the aggregate as we go.
--- We could do an interval join over two streams, but instead we'll create a stateful table on the
---  right hand side and do a join.
-
 create table input_table (
   left_id int,
   right_id int,
@@ -16,14 +12,15 @@ create table input_table (
 
 -- create a state table from the right list
 create temporary view right_count as
-select right_id, count(*) as cnt
+select right_id, count(*) as cnt, max(ts) as ts
 from input_table
 group by right_id;
 
 create temporary view totals as
 select sum(l.left_id * coalesce(r.cnt, 0)) as total
-from input_table l
-left join right_count r on l.left_id = r.right_id;
+from input_table l, right_count r
+where l.left_id = r.right_id
+  and l.ts between l.ts - interval '1' second and r.ts;
 
 create table print_sink (
   total bigint
