@@ -12,6 +12,7 @@ create table rules (
   'csv.ignore-parse-errors' = 'true'
 );
 
+
 -- step 3: create the updates table
 create table updates (
     event_time timestamp(3) not null,
@@ -51,63 +52,34 @@ cardinality(a.line) - cardinality(array_intersect(a.line, r.arr)) as i,
 case when abs(cardinality(a.line) - cardinality(array_intersect(a.line, r.arr)) - rn) = 0
 then 0
 else 1 end as is_not_safe,
-case when cardinality(array_intersect(a.line, r.arr)) = (cardinality(a.line)+1)/2
-then line[(cardinality(a.line)+1)/2]
-else null end as mid,
+--last_value(
+case when (cardinality(a.line) - cardinality(array_intersect(a.line, r.arr))) = (cardinality(a.line)+1)/2
+then l
+else null end
+--) over (partition by a.line order by a.event_time)
+ as mid,
+line[(cardinality(a.line)+1)/2] as mid2,
+coalesce(last_value(case when abs(cardinality(a.line) - cardinality(array_intersect(a.line, r.arr)) - rn) = 0
+           then null
+           else 1 end) over (partition by a.line order by a.event_time), 1) as safe_window,
 *
 from a
 join rules_distinct
---for system_time as of a.event_time
+for system_time as of a.event_time
  as r on r.l = a.ele;
 
---
+
 create temporary view c as
-select sum(mid)
-from (
-  select line, sum(mid) as mid, sum(is_not_safe)
-  from b
-  where mid is not null
-  group by line
-  having sum(is_not_safe) = 0
-)
-;
-
-where cardinality(a.line) - cardinality(array_intersect(a.line, r.arr))  <> rn;
-
-select sum(val)
-from (
-select line, max(mid) as val
+select line, max(mid) as m, sum(is_not_safe) as s
 from b
+group by tumble(event_time, interval '1' second), line;
 
-group by line
-having max(mid) <> 0
-);
+-- problem 1
+create temporary view p1 as
+select sum(m) from c where s = 0;
 
-select sum(x) from(
-select line, sum(case when cardinality(array_intersect(b.line, b.arr)) = (cardinality(b.line)+1)/2 then ele else 0 end) as x
-from b
---where cardinality(array_intersect(b.line, b.arr)) = (cardinality(b.line)+1)/2
-group by line
-);
-
-
--- filter the lines that have invalid rules
--- return 0 if there is a return violation, else midpoint
-create temporary view c as
-select sum(val)
-from (
-  select
-  line,
-  coalesce(
-  last_value(
-      case when array_position(line, r.l) > array_position(line, r.r) then 0
-      else null
-      end
-    ), line[cardinality(line)/2+1]) as val
-  from rules as r -- this is an unfortunate join
-  join updates on array_position(line, r.l) <> 0 and array_position(line, r.r) <> 0
-  group by line
-);
+create temporary view p2 as
+select sum(m) from c where s > 0;
 
 create table print_sink (
   total bigint
