@@ -10,7 +10,7 @@ create table rules (
     WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
 ) with (
   'connector' = 'filesystem',
-  'path' = '/Users/henneberger/advent-of-code/data/day5-example-a-time.txt',
+  'path' = '/Users/henneberger/advent-of-code/data/day5-input-a-time.txt',
   'format' = 'csv',
   'csv.ignore-parse-errors' = 'true'
 );
@@ -22,7 +22,7 @@ create table updates (
     WATERMARK FOR event_time as event_time - INTERVAL '5' SECOND
 ) with (
    'connector' = 'filesystem',
-   'path' = '/Users/henneberger/advent-of-code/data/day5-example-b-time.txt',
+   'path' = '/Users/henneberger/advent-of-code/data/day5-input-b-time.txt',
    'format' = 'csv',
    'csv.field-delimiter' = '|',
    'csv.ignore-parse-errors' = 'true'
@@ -43,9 +43,7 @@ from updates u, unnest(u.line) as t(ele);
 -- temporal join against the current rules
 create temporary view b as
 select
-  case when cardinality(a.line) - cardinality(array_intersect(a.line, r.arr)) - rn = 0
-       then 0
-       else 1 end as is_not_safe,
+  abs(cardinality(a.line) - cardinality(array_intersect(a.line, r.arr)) - rn) as is_not_safe,
   case when (cardinality(a.line) - cardinality(array_intersect(a.line, r.arr))) = (cardinality(a.line)+1)/2
        then l
        else null end as mid,
