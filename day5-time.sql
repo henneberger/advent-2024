@@ -10,7 +10,7 @@ create table rules (
     WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
 ) with (
   'connector' = 'filesystem',
-  'path' = '/Users/henneberger/advent-of-code/data/day5-input-a-time.txt',
+  'path' = '/Users/henneberger/advent-of-code/data/day5-example-a-time.txt',
   'format' = 'csv',
   'csv.ignore-parse-errors' = 'true'
 );
@@ -22,7 +22,7 @@ create table updates (
     WATERMARK FOR event_time as event_time - INTERVAL '5' SECOND
 ) with (
    'connector' = 'filesystem',
-   'path' = '/Users/henneberger/advent-of-code/data/day5-input-b-time.txt',
+   'path' = '/Users/henneberger/advent-of-code/data/day5-example-b-time.txt',
    'format' = 'csv',
    'csv.field-delimiter' = '|',
    'csv.ignore-parse-errors' = 'true'
@@ -31,13 +31,9 @@ create table updates (
 -- Since we have to do a join, and joins are expensive in flink, we will
 -- use a temporal join to join a stateful 'rules' table with the updates table.
 create temporary view rules_distinct as
-select * from (
-   select l, event_time, arr, row_number() over (partition by l order by event_time asc) as rownum
-   from (
-     select *, array_agg(r) over (partition by l order by event_time asc) as arr
-     from rules)
-   )
-where rownum = 1;
+select l, array_agg(r) as arr, max(event_time) as event_time
+from rules
+group by l;
 
 -- unnest updates, but keep it as a stream
 create temporary view a as
@@ -47,7 +43,7 @@ from updates u, unnest(u.line) as t(ele);
 -- temporal join against the current rules
 create temporary view b as
 select
-  case when abs(cardinality(a.line) - cardinality(array_intersect(a.line, r.arr)) - rn) = 0
+  case when cardinality(a.line) - cardinality(array_intersect(a.line, r.arr)) - rn = 0
        then 0
        else 1 end as is_not_safe,
   case when (cardinality(a.line) - cardinality(array_intersect(a.line, r.arr))) = (cardinality(a.line)+1)/2
@@ -77,6 +73,7 @@ create table print_sink (
   'connector' = 'print'
 );
 
+-- As of flink 1.20, the job graph gets duplicated here, it needs a predicate pushdown guard
 execute statement set begin
   insert into print_sink
   select total
