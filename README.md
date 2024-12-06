@@ -13,7 +13,7 @@ Goals:
 Non-goals:
 - Advanced tuning like ttl
 - Flink job optimization tricks
-- Input data purity - I may munge the data slightly
+- Input data purity - I may munge the data slightly because of flink (timestamp) limitations
 
 Other Notes:
 - Day 5 is the first puzzle that requires a join. `day5-time.sql` uses all correct stream semantics but adds timestamps to the dataset.
