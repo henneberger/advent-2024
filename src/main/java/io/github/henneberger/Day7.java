@@ -13,22 +13,20 @@ public class Day7 {
     String line;
     BigInteger total = BigInteger.ZERO;
     BigInteger total2 = BigInteger.ZERO;
-    int x = 0;
     while (!(line = in.nextLine()).isEmpty()) {
-      x++;
       line = line.trim();
       String[] split = line.split(": ");
       BigInteger target = new BigInteger(split[0]);
-      List<BigInteger> nums = Arrays.stream(split[1].split(" ")).map(BigInteger::new)
+      List<Long> nums = Arrays.stream(split[1].split(" ")).map(Long::parseLong)
           .collect(Collectors.toList());
 
-      boolean valid = problem1(target, nums, 0, BigInteger.ZERO);
+      boolean valid = problem(target.longValue(), nums, 0, 0, false);
 
       if (valid) {
         total = total.add(target);
       }
 
-      boolean valid2 = problem2(target, nums, 0, BigInteger.ZERO);
+      boolean valid2 = problem(target.longValue(), nums, 0, 0, true);
 
       if (valid2) {
         total2 = total2.add(target);
@@ -38,41 +36,31 @@ public class Day7 {
     System.out.println(total2);
   }
 
-  private static boolean problem2(BigInteger target, List<BigInteger> nums, int idx,
-      BigInteger sumSoFar) {
+  private static boolean problem(long target, List<Long> nums, int idx,
+      long sumSoFar, boolean supportPlus) {
+    if (sumSoFar < 0) {
+      return false;
+    }
     if (idx == nums.size()) {
-      return target.equals(sumSoFar);
+      return target == sumSoFar;
     }
 
-    boolean b = problem2(target, nums, idx+1, new BigInteger(
-        (sumSoFar.equals(BigInteger.ZERO) ? "" : sumSoFar.toString()) +
-            nums.get(idx).toString()));
-    if (b) {
-      return b;
+    if (supportPlus) {
+      boolean b;
+      BigInteger val = new BigInteger((sumSoFar == 0 ? "" : sumSoFar) + "" + nums.get(idx));
+      if (val.bitLength() <= 63 && (b = problem(target, nums, idx + 1, val.longValue(), supportPlus))) {
+        return b;
+      }
     }
-    if (problem2(target, nums, idx + 1, sumSoFar.add(nums.get(idx)))) {
+
+    if (problem(target, nums, idx + 1, sumSoFar + nums.get(idx), supportPlus)) {
       return true;
     }
 
-    if (idx == 0) {
-      return problem2(target, nums, idx + 2, nums.get(idx).multiply(nums.get(idx+1)));
+    if (idx == 0) { //if first value is a multiplication
+      return problem(target, nums, idx + 2, nums.get(idx) * nums.get(idx+1), supportPlus);
     } else {
-      return problem2(target, nums, idx + 1, sumSoFar.multiply(nums.get(idx)));
-    }
-  }
-
-  private static boolean problem1(BigInteger target, List<BigInteger> nums, int idx,
-      BigInteger sumSoFar) {
-    if (idx == nums.size()) {
-      return target.equals(sumSoFar);
-    }
-    if (problem1(target, nums, idx + 1, sumSoFar.add(nums.get(idx)))) {
-      return true;
-    }
-    if (idx == 0) {
-      return problem1(target, nums, idx + 2, nums.get(idx).multiply(nums.get(idx+1)));
-    } else {
-      return problem1(target, nums, idx + 1, sumSoFar.multiply(nums.get(idx)));
+      return problem(target, nums, idx + 1, sumSoFar * nums.get(idx), supportPlus);
     }
   }
 }
