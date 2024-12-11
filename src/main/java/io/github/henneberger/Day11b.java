@@ -14,49 +14,21 @@ public class Day11b {
       .collect(Collectors.toList());
 
   public static void main(String[] args) {
-
     long total = 0;
     for (int i = 0; i < a.size(); i++) {
       total+= sum(a.get(i), 0);
     }
     System.out.println(total);
-
   }
 
-  static class P {
-    Long val;
-    Integer level;
-
-    public P(Long val, Integer level) {
-      this.val = val;
-      this.level = level;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      P p = (P) o;
-      return Objects.equals(val, p.val) && Objects.equals(level, p.level);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(val, level);
-    }
-  }
-  static Map<P, Long> memoize = new HashMap<>();
+  static Map<String, Long> memoize = new HashMap<>();
   private static long sum(Long val, int pos) {
     if (pos == 75) {
       return 1;
     }
-    P p = new P(val, pos);
-    if (memoize.containsKey(p)) {
-      return memoize.get(p);
+    String key = val + ":" + pos;
+    if (memoize.containsKey(key)) {
+      return memoize.get(key);
     }
     String str = String.valueOf(val);
 
@@ -72,7 +44,7 @@ public class Day11b {
     } else {
       total = sum(val*2024, pos+1);
     }
-    memoize.put(p, total);
+    memoize.put(key, total);
     return total;
   }
 }
