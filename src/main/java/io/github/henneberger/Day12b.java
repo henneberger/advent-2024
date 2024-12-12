@@ -31,7 +31,7 @@ public class Day12b {
       getRegion(i, region);
       seen.addAll(region);
 
-      int calc = calc(region.stream().findFirst().get(), region);
+      int calc = calc(region);
       total += region.size() * calc;
 
     }
@@ -39,11 +39,9 @@ public class Day12b {
   }
 
   //Count corners
-  private static int calc(Integer start, HashSet<Integer> region) {
+  private static int calc(HashSet<Integer> region) {
     int corners = 0;
     for (Integer r : region) {
-      //exterior corners
-      //top left
       boolean hasLeft = r % len != 0 && region.contains(r - 1);
       boolean hasRight = (r + 1) % len != 0 && region.contains(r + 1);
       boolean hasTop = r - len >= 0 && region.contains(r - len);
@@ -53,7 +51,7 @@ public class Day12b {
       if (!hasTop && !hasRight) corners++;
       if (!hasBottom && !hasLeft) corners++;
       if (!hasBottom && !hasRight) corners++;
-      //exterior
+      //interior
       if (hasTop && hasLeft && !region.contains(r-len-1)) corners++;
       if (hasTop && hasRight && !region.contains(r-len+1)) corners++;
       if (hasBottom && hasRight && !region.contains(r+len+1)) corners++;
