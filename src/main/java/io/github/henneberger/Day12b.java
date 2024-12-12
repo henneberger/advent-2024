@@ -4,10 +4,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
-import lombok.Value;
 
-//!!!! NOT FINISHED
-//!!!! WIP
 public class Day12b {
   static String string ="RRRRIICCFF\n"
       + "RRRRIICCCF\n"
@@ -31,22 +28,38 @@ public class Day12b {
     for (int i = 0; i < in.size(); i++) {
       if (seen.contains(i)) continue;
       HashSet<Integer> region = new HashSet<>();
-
       getRegion(i, region);
-
       seen.addAll(region);
 
       int calc = calc(region.stream().findFirst().get(), region);
-      System.out.println(calc);
-      System.out.println(in.get(i) + " : "+ calc +" * " + region.size());
+      total += region.size() * calc;
+
     }
     System.out.println(total);
   }
 
+  //Count corners
   private static int calc(Integer start, HashSet<Integer> region) {
-    //todo: build a set of edges and merge?
-
-    return 0;
+    int corners = 0;
+    for (Integer r : region) {
+      //exterior corners
+      //top left
+      boolean hasLeft = r % len != 0 && region.contains(r - 1);
+      boolean hasRight = (r + 1) % len != 0 && region.contains(r + 1);
+      boolean hasTop = r - len >= 0 && region.contains(r - len);
+      boolean hasBottom = r + len < in.size() && region.contains(r + len);
+      //exterior
+      if (!hasTop && !hasLeft) corners++;
+      if (!hasTop && !hasRight) corners++;
+      if (!hasBottom && !hasLeft) corners++;
+      if (!hasBottom && !hasRight) corners++;
+      //exterior
+      if (hasTop && hasLeft && !region.contains(r-len-1)) corners++;
+      if (hasTop && hasRight && !region.contains(r-len+1)) corners++;
+      if (hasBottom && hasRight && !region.contains(r+len+1)) corners++;
+      if (hasBottom && hasLeft && !region.contains(r+len-1)) corners++;
+    }
+    return corners;
   }
 
   private static void getRegion(int i, HashSet<Integer> seen) {
@@ -68,6 +81,5 @@ public class Day12b {
     if(!seen.contains(i+len) && i + len < in.size() && in.get(i+len) == c) {
       getRegion(i+len, seen);
     }
-
   }
 }
